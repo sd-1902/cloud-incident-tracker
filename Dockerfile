@@ -19,4 +19,4 @@ COPY . /app/
 EXPOSE 8080
 
 # Command to run the application
-CMD ["gunicorn", "-k", "uvicorn.workers.UvicornWorker", "--timeout", "300", "--workers", "4", "--bind", "0.0.0.0:8080", "app:app"]
+CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8080"]
