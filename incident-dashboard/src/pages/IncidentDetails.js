@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { getIncident, resolveIncident, reopenIncident } from "../api/client";
+import { getIncident, resolveIncident, reopenIncident, updateIncidentStatus } from "../api/client";
 
 export default function IncidentDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
 
+  const [comment, setComment] = useState("");
   const [incident, setIncident] = useState(null);
   const [loading, setLoading] = useState(false);
 
@@ -13,35 +14,19 @@ export default function IncidentDetails() {
     getIncident(id).then(setIncident);
   }, [id]);
 
-  async function handleResolve() {
+  async function handleUpdateStatus(newStatus) {
     setLoading(true);
 
-    try {
-      await resolveIncident(id);
-
-      // refresh data instead of navigating
-      const updated = await getIncident(id);
-      setIncident(updated);
-    } catch (err) {
-      console.error("Failed to resolve incident:", err);
-    }
+    await updateIncidentStatus(incident.id, {
+      status: newStatus,
+      comment: comment,
+      signed_by: "test-user"
+    });
 
     setLoading(false);
+    setComment("");
   }
 
-  async function handleReopen() {
-  setLoading(true);
-
-  try {
-    await reopenIncident(id);
-    const updated = await getIncident(id);
-    setIncident(updated);
-  } catch (err) {
-    console.error("Failed to reopen incident:", err);
-  }
-
-  setLoading(false);
-}
 
   if (!incident) return <p>Loading...</p>;
 
@@ -49,22 +34,31 @@ export default function IncidentDetails() {
         <div>
             <h1>{incident.title}</h1>
             <p>{incident.description}</p>
+            <br />
             <p>Severity: {incident.severity}</p>
+            <br />
             <p>Status: {incident.status}</p>
 
+            <br />
+            <textarea placeholder="Add comment..." value={comment} onChange={(e) => setComment(e.target.value)}/>
+            <br />
             {incident.status === "open" && (
-                <button onClick={handleResolve} disabled={loading}>
-                    {loading ? "Updating..." : "Resolve Incident"}
-                </button>
+                <button onClick={() => handleUpdateStatus("resolved")} disabled={loading}>Mark incident as resolved</button>
             )}
 
             {incident.status === "resolved" && (
-                <button onClick={handleReopen} disabled={loading}>
-                    {loading ? "Updating..." : "Reopen Incident"}
-                </button>
+                <button onClick={() => handleUpdateStatus("open")} disabled={loading}>Re-open Incident</button>
             )}
 
             <br />
+            <h3>History</h3>
+            <ul>
+              {incident.history?.map((h, index) => (
+                <li key={index}>
+                  {h.type} — {new Date(h.timestamp).toLocaleString()}
+                </li>
+              ))}
+            </ul>
 
             <Link to="/incidents">Return to Incidents List</Link>
         </div>

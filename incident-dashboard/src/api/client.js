@@ -21,14 +21,14 @@ export async function createIncident(data) {
   return res.json();
 }
 
-export async function resolveIncident(id) {
-  await fetch(`${BASE_URL}/incidents/${id}?status=resolved`, {
-    method: "PATCH"
+export async function updateIncidentStatus(id, data) {
+  const res = await fetch(`${BASE_URL}/incidents/${id}`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(data)
   });
-}
 
-export async function reopenIncident(id) {
-  await fetch(`${BASE_URL}/incidents/${id}?status=open`, {
-    method: "PATCH"
-  });
+  return res.json();
 }
