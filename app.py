@@ -81,8 +81,11 @@ def update_incident(incident_id: str, update: StatusUpdate):
 
 @app.get("/incidents/{incident_id}")
 def get_incident(incident_id: str):
-    doc = db.collection("incidents").document(incident_id).get()
+    ref = db.collection("incidents").document(incident_id)
+    doc = ref.get()
     if not doc.exists:
         return {"error": "Incident not found."}
-    return doc.to_dict()
-
+    data = doc.to_dict()
+    history = ref.collection("history").stream()
+    data["history"] = [h.to_dict() for h in history]
+    return data

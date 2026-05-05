@@ -16,12 +16,18 @@ export default function IncidentDetails() {
 
   async function handleUpdateStatus(newStatus) {
     setLoading(true);
+    if (!comment.trim()) {
+    alert("Comment is required");
+    return;}
 
     await updateIncidentStatus(incident.id, {
       status: newStatus,
       comment: comment,
       signed_by: "test-user"
     });
+    const updated = await getIncident(incident.id);
+    setIncident(updated);
+
 
     setLoading(false);
     setComment("");
