@@ -1,18 +1,24 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { getIncident, resolveIncident, reopenIncident, updateIncidentStatus } from "../api/client";
+import { getIncident, updateIncidentStatus } from "../api/client";
+
 
 export default function IncidentDetails() {
   const { id } = useParams();
-  const navigate = useNavigate();
+  //const navigate = useNavigate();
 
   const [comment, setComment] = useState("");
   const [incident, setIncident] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    getIncident(id).then(setIncident);
+  const loadPage = useCallback(async () => {
+    const data = await getIncident(id);
+    setIncident(data);
   }, [id]);
+
+  useEffect(() => {
+    loadPage();
+  }, [loadPage]);
 
   async function handleUpdateStatus(newStatus) {
     setLoading(true);
@@ -25,8 +31,8 @@ export default function IncidentDetails() {
       comment: comment,
       signed_by: "test-user"
     });
-    const updated = await getIncident(incident.id);
-    setIncident(updated);
+    
+    await loadPage();
 
 
     setLoading(false);
@@ -61,7 +67,10 @@ export default function IncidentDetails() {
             <ul>
               {incident.history?.map((h, index) => (
                 <li key={index}>
-                  {h.type} — {new Date(h.timestamp).toLocaleString()}
+                  <strong> {h.status || h.type}</strong> -{" "}
+                  {h.comment || "No comment"} -{" "}
+                  {h.signed_by || "System"} -{" "}
+                  {new Date(h.timestamp).toLocaleString()}
                 </li>
               ))}
             </ul>
