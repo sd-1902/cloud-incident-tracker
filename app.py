@@ -17,24 +17,47 @@ app.add_middleware(
 )
 db = firestore.Client()
 
-def add_history(data, event_type): #helper func
-    if "history" not in data:
-        data["history"] = []
 
-    data["history"].append({
-        "type": event_type,
-        "timestamp": datetime.now(timezone.utc).isoformat()
-    })
+
 
 class Incident(BaseModel):
     title: str
     description: str
     severity: str
+    actor: str #person responsible for identifying the incident
+    owner: str | None = None #person responsible for resolving it
 
 class StatusUpdate(BaseModel):
     status: str
     comment: str
-    signed_by:str
+    signed_by: str
+
+class AssingmentUpdate(BaseModel):
+    owner: str
+
+class User(BaseModel):
+    name: str
+    email: str
+    role: str
+
+@app.post("/users")
+def create_user(user: User):
+    user_id = str(uuid.uuid4())
+    data = {
+        "id": user_id,
+        "name": user.name,
+        "email": user.email,
+        "role": user.role,
+        "created_at": firestore.SERVER_TIMESTAMP
+    }
+    
+    db.collection("users").document(user_id).set(data)
+    return data
+
+@app.get("/users")
+def list_users():
+    docs = db.collection("users").stream()
+    return [doc.to_dict() for doc in docs]
 
 @app.post("/incidents")
 def create_incident(incident: Incident):
@@ -46,21 +69,36 @@ def create_incident(incident: Incident):
         "description": incident.description,
         "severity": incident.severity,
         "status": "open",
-        "created_at": datetime.now(timezone.utc).isoformat(),
-        "history": []
+        "actor": incident.actor,
+        "owner": None,
+        "created_at": firestore.SERVER_TIMESTAMP
     }
 
-    add_history(data, "created")
+    actor_ref = db.collection("users").document(incident.actor).get()
+    if not actor_ref.exists:
+        return {"error": "something went wrong"}
+    actor_name = actor_ref.to_dict()["name"]
+    ref = db.collection("incidents").document(doc_id)
+    ref.set(data)
 
-    db.collection("incidents").document(doc_id).set(data)
-    return data
+    ref.collection("history").add({
+        "status": "created",
+        "comment": "incident created, yet to be assigned",
+        "updated_by": actor_name,
+        "timestamp": firestore.SERVER_TIMESTAMP
+    })
+
+    return {
+        "id": doc_id,
+        "message" : "incident created"
+    }
 
 @app.get("/incidents") #main view of all incidents
 def list_incidents():
     docs = db.collection("incidents").stream()
     return [doc.to_dict() for doc in docs]
 
-@app.patch("/incidents/{incident_id}")
+@app.patch("/incidents/{incident_id}/status")
 def update_incident(incident_id: str, update: StatusUpdate):
     ref = db.collection("incidents").document(incident_id)
 
@@ -74,10 +112,40 @@ def update_incident(incident_id: str, update: StatusUpdate):
         "status": update.status,
         "comment": update.comment,
         "updated_by": update.signed_by,
-        "timestamp": datetime.now(timezone.utc)
+        "timestamp": firestore.SERVER_TIMESTAMP
     })
 
     return {"message": "updated"}
+
+@app.patch("/incidents/{incident_id}/assign")
+def assign_incident(incident_id: str, update:AssingmentUpdate):
+    ref = db.collection("incidents").document(incident_id)
+    actor_id = ref.get().to_dict()["actor"]
+    actor_ref = db.collection("users").document(actor_id).get()
+    if not actor_ref.exists:
+        return {"error": "Something went wrong."}
+    
+    actor_name = actor_ref.to_dict()["name"]
+
+    owner_ref= db.collection("users").document(update.owner).get()
+
+    if not owner_ref.exists:
+        return {"error": "Failed to assign incident."}
+
+    ref.update({
+        "owner": update.owner
+    })
+
+    owner_name = owner_ref.to_dict()["name"]
+
+    ref.collection("history").add({
+        "status": "assigned",
+        "comment": "assigned to operator" + owner_name,
+        "updated_by": actor_name,
+        "timestamp": firestore.SERVER_TIMESTAMP
+    })
+
+    return {"message": "Incident assigned successfully."}
 
 @app.get("/incidents/{incident_id}")
 def get_incident(incident_id: str):
