@@ -48,7 +48,7 @@ def create_user(user: User):
         "name": user.name,
         "email": user.email,
         "role": user.role,
-        "created_at": firestore.SERVER_TIMESTAMP
+        "created_at": datetime.now(timezone.utc).isoformat()
     }
     
     db.collection("users").document(user_id).set(data)
@@ -71,7 +71,7 @@ def create_incident(incident: Incident):
         "status": "open",
         "actor": incident.actor,
         "owner": None,
-        "created_at": firestore.SERVER_TIMESTAMP
+        "created_at": datetime.now(timezone.utc).isoformat()
     }
 
     actor_ref = db.collection("users").document(incident.actor).get()
@@ -85,7 +85,7 @@ def create_incident(incident: Incident):
         "status": "created",
         "comment": "incident created, yet to be assigned",
         "updated_by": actor_name,
-        "timestamp": firestore.SERVER_TIMESTAMP
+        "timestamp": datetime.now(timezone.utc).isoformat()
     })
 
     return {
@@ -112,7 +112,7 @@ def update_incident(incident_id: str, update: StatusUpdate):
         "status": update.status,
         "comment": update.comment,
         "updated_by": update.signed_by,
-        "timestamp": firestore.SERVER_TIMESTAMP
+        "timestamp": datetime.now(timezone.utc).isoformat()
     })
 
     return {"message": "updated"}
@@ -142,7 +142,7 @@ def assign_incident(incident_id: str, update:AssingmentUpdate):
         "status": "assigned",
         "comment": "assigned to operator" + owner_name,
         "updated_by": actor_name,
-        "timestamp": firestore.SERVER_TIMESTAMP
+        "timestamp": datetime.now(timezone.utc).isoformat()
     })
 
     return {"message": "Incident assigned successfully."}

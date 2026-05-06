@@ -75,7 +75,7 @@ export default function IncidentDetails() {
               ))}
             </ul>
 
-            <Link to="/incidents">Return to Incidents List</Link>
+            <Link to="/">Return to Incidents List</Link>
         </div>
     );
 }

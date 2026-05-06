@@ -9,7 +9,8 @@ export default function CreateIncident() {
   const [form, setForm] = useState({
     title: "",
     description: "",
-    severity: "low"
+    severity: "low",
+    actor: "2416ec57-c95b-4359-9aaf-851cd5adcf54"
   });
 
   const [loading, setLoading] = useState(false);

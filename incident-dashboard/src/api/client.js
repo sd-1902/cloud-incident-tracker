@@ -22,7 +22,7 @@ export async function createIncident(data) {
 }
 
 export async function updateIncidentStatus(id, data) {
-  const res = await fetch(`${BASE_URL}/incidents/${id}`, {
+  const res = await fetch(`${BASE_URL}/incidents/${id}/status`, {
     method: "PATCH",
     headers: {
       "Content-Type": "application/json"
