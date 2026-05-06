@@ -2,16 +2,22 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import IncidentList from "./pages/IncidentList";
 import IncidentDetails from "./pages/IncidentDetails";
 import CreateIncident from "./pages/CreateIncident";
+import Login from "./pages/Login";
+import { AuthProvider } from "./components/AuthContext";
+import ProtectedRouteAccess from "./components/RouteAccess";
 
-function App() {
+export default function App() {
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<IncidentList />} />
-        <Route path="/create" element={<CreateIncident />} />
-        <Route path="/incidents/:id" element={<IncidentDetails />} />
-      </Routes>
-    </BrowserRouter>
+    <AuthProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<ProtectedRouteAccess><IncidentList /></ProtectedRouteAccess>} />
+          <Route path="/create" element={<ProtectedRouteAccess><CreateIncident /></ProtectedRouteAccess>} />
+          <Route path="/incidents/:id" element={<ProtectedRouteAccess><IncidentDetails /></ProtectedRouteAccess>} />
+          <Route path ="/login" element={<Login />}/>
+        </Routes>
+      </BrowserRouter>
+    </AuthProvider>
   );
 }
 

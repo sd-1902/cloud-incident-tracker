@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { getIncidents } from "../api/client";
 import { Link } from "react-router-dom";
 import { createIncident } from "../api/client";
+import { auth } from "../components/firebase";
+import { signOut } from "firebase/auth";
 
 export default function IncidentList() {
   const [incidents, setIncidents] = useState([]);
@@ -39,6 +41,10 @@ export default function IncidentList() {
           <p>No incidents found</p>
         )}
       </ul>
+      <br/>
+      <button onClick={() => signOut(auth)}>
+        Logout
+      </button>
     </div>
   );
 }
