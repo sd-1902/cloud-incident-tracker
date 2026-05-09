@@ -43,3 +43,8 @@ export async function updateIncidentStatus(id, data) {
 
   return res.json();
 }
+
+export async function getUserProfile(id) {
+  const res = await fetch(`${BASE_URL}/users/${id}`);
+  return res.json();
+}

@@ -32,7 +32,7 @@ class StatusUpdate(BaseModel):
     comment: str
     signed_by: str
 
-class AssingmentUpdate(BaseModel):
+class AssignmentUpdate(BaseModel):
     owner: str
 
 class User(BaseModel):
@@ -57,6 +57,11 @@ def create_user(user: User):
 @app.get("/users")
 def list_users():
     docs = db.collection("users").stream()
+    return [doc.to_dict() for doc in docs]
+
+@app.get("/users/operators")
+def get_ops():
+    docs = db.collection("users").where("role","==","operator").stream()
     return [doc.to_dict() for doc in docs]
 
 @app.get("/users/{user_id}")
@@ -137,13 +142,20 @@ def update_incident(incident_id: str, update: StatusUpdate):
     return {"message": "updated"}
 
 @app.patch("/incidents/{incident_id}/assign")
-def assign_incident(incident_id: str, update:AssingmentUpdate):
+def assign_incident(incident_id: str, update:AssignmentUpdate):
     ref = db.collection("incidents").document(incident_id)
-    actor_id = ref.get().to_dict()["actor"]
+    incident_doc = ref.get()
+    if not incident_doc.exists:
+        return {"error": "Incident not found"}
+    
+    actor_id = incident_doc.to_dict()["actor"]
     actor_ref = db.collection("users").document(actor_id).get()
     if not actor_ref.exists:
-        return {"error": "Something went wrong."}
-    
+        return {"error": "Actor not found."}
+    actor_role = actor_ref.to_dict()["role"]
+    if actor_role != "admin":
+        return {"error": "User not permitted access to assign incidents."}
+
     actor_name = actor_ref.to_dict()["name"]
 
     owner_ref= db.collection("users").document(update.owner).get()
@@ -159,7 +171,7 @@ def assign_incident(incident_id: str, update:AssingmentUpdate):
 
     ref.collection("history").add({
         "status": "assigned",
-        "comment": "assigned to operator" + owner_name,
+        "comment": f"assigned to operator {owner_name}",
         "updated_by": actor_name,
         "timestamp": datetime.now(timezone.utc).isoformat()
     })
