@@ -17,7 +17,16 @@ app.add_middleware(
 )
 db = firestore.Client()
 
-
+status_actions = {
+    "open": ["assigned", "in_progress"],
+    "assigned": ["in_progress", "blocked"],
+    "in_progress": ["blocked", "waiting_on_user", "resolved", "in_progress"],
+    "blocked": ["in_progress", "waiting_on_vendor"],
+    "waiting_on_user": ["in_progress", "resolved"],
+    "resolved": ["reopened", "closed"],
+    "reopened": ["in_progress"],
+    "closed": []
+}
 
 
 class Incident(BaseModel):
@@ -31,6 +40,7 @@ class StatusUpdate(BaseModel):
     status: str
     comment: str
     signed_by: str
+    signed_by_name: str
 
 class AssignmentUpdate(BaseModel):
     owner: str
@@ -75,7 +85,10 @@ def get_user_profile(user_id: str):
 @app.post("/incidents")
 def create_incident(incident: Incident):
     doc_id = str(uuid.uuid4())
-
+    actor_ref = db.collection("users").document(incident.actor).get()
+    if not actor_ref.exists:
+        return {"error": "something went wrong"}
+    actor_name = actor_ref.to_dict()["name"]
     data = {
         "id": doc_id,
         "title": incident.title,
@@ -83,21 +96,21 @@ def create_incident(incident: Incident):
         "severity": incident.severity,
         "status": "open",
         "actor": incident.actor,
+        "actor_name": actor_name,
+        "owner_name": None,
         "owner": None,
         "created_at": datetime.now(timezone.utc).isoformat()
     }
 
-    actor_ref = db.collection("users").document(incident.actor).get()
-    if not actor_ref.exists:
-        return {"error": "something went wrong"}
-    actor_name = actor_ref.to_dict()["name"]
+    
     ref = db.collection("incidents").document(doc_id)
     ref.set(data)
 
     ref.collection("history").add({
-        "status": "created",
+        "type": "created",
         "comment": "incident created, yet to be assigned",
-        "updated_by": actor_name,
+        "updated_by": incident.actor,
+        "updated_by_name": actor_name,
         "timestamp": datetime.now(timezone.utc).isoformat()
     })
 
@@ -126,6 +139,16 @@ def get_incidents(uid: str):
 def update_incident(incident_id: str, update: StatusUpdate):
     ref = db.collection("incidents").document(incident_id)
 
+    if not ref.get().exists:
+        return {"error": "Incident not found."}
+    
+    current_status = ref.get().to_dict()["status"]
+    allowed_status_change = status_actions.get(current_status, [])
+
+
+    if update.status not in allowed_status_change:
+        return {"error": "Invalid status change"}
+
     # update main status field
     ref.update({
         "status": update.status
@@ -133,9 +156,12 @@ def update_incident(incident_id: str, update: StatusUpdate):
 
     # append to history subcollection
     ref.collection("history").add({
-        "status": update.status,
+        "type": "status_change",
+        "from": current_status,
+        "to": update.status,
         "comment": update.comment,
-        "updated_by": update.signed_by,
+        "updated_by_id": update.signed_by,
+        "updated_by_name": update.signed_by_name,
         "timestamp": datetime.now(timezone.utc).isoformat()
     })
 
@@ -162,17 +188,22 @@ def assign_incident(incident_id: str, update:AssignmentUpdate):
 
     if not owner_ref.exists:
         return {"error": "Failed to assign incident."}
-
-    ref.update({
-        "owner": update.owner
-    })
-
+    
     owner_name = owner_ref.to_dict()["name"]
 
+    ref.update({
+        "owner": update.owner,
+        "owner_name": owner_name,
+        "status": "assigned"
+    })
+
     ref.collection("history").add({
-        "status": "assigned",
+        "type": "assigned",
+        "from": "open",
+        "to": "assigned",
         "comment": f"assigned to operator {owner_name}",
-        "updated_by": actor_name,
+        "updated_by": actor_id,
+        "updated_by_name": actor_name,
         "timestamp": datetime.now(timezone.utc).isoformat()
     })
 
