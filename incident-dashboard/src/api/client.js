@@ -1,7 +1,8 @@
 const BASE_URL = "https://incident-api-10665824183.us-central1.run.app";
 
-export async function getIncidents() {
-  const res = await fetch(`${BASE_URL}/incidents`);
+export async function getIncidents(id) {
+  if (!id) return [];
+  const res = await fetch(`${BASE_URL}/incidents?uid=${id}`);
   return res.json();
 }
 

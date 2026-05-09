@@ -102,8 +102,19 @@ def create_incident(incident: Incident):
     }
 
 @app.get("/incidents") #main view of all incidents
-def list_incidents():
-    docs = db.collection("incidents").stream()
+def get_incidents(uid: str):
+    user_doc = db.collection("users").document(uid).get()
+    if not user_doc.exists:
+        return {"error": "User not found"}
+    user = user_doc.to_dict()
+    if user["role"] == "admin":
+        docs = db.collection("incidents").stream()
+    else:
+        docs = ( 
+            db.collection("incidents")
+            .where("owner", "==", uid)
+            .stream()
+        )
     return [doc.to_dict() for doc in docs]
 
 @app.patch("/incidents/{incident_id}/status")
