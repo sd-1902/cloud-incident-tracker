@@ -36,28 +36,36 @@ class AssingmentUpdate(BaseModel):
     owner: str
 
 class User(BaseModel):
+    uid: str
     name: str
     email: str
     role: str
 
 @app.post("/users")
 def create_user(user: User):
-    user_id = str(uuid.uuid4())
     data = {
-        "id": user_id,
+        "id": user.uid,
         "name": user.name,
         "email": user.email,
         "role": user.role,
         "created_at": datetime.now(timezone.utc).isoformat()
     }
     
-    db.collection("users").document(user_id).set(data)
+    db.collection("users").document(user.uid).set(data)
     return data
 
 @app.get("/users")
 def list_users():
     docs = db.collection("users").stream()
     return [doc.to_dict() for doc in docs]
+
+@app.get("/users/{user_id}")
+def get_user_profile(user_id: str):
+    user_doc = db.collection("users").document(user_id).get()
+    if not user_doc.exists:
+        return {"error": "User not found."}
+    data = user_doc.to_dict()
+    return data
 
 @app.post("/incidents")
 def create_incident(incident: Incident):

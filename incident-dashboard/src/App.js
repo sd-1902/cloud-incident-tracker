@@ -5,6 +5,7 @@ import CreateIncident from "./pages/CreateIncident";
 import Login from "./pages/Login";
 import { AuthProvider } from "./components/AuthContext";
 import ProtectedRouteAccess from "./components/RouteAccess";
+import Signup from "./pages/Signup";
 
 export default function App() {
   return (
@@ -15,12 +16,13 @@ export default function App() {
           <Route path="/create" element={<ProtectedRouteAccess><CreateIncident /></ProtectedRouteAccess>} />
           <Route path="/incidents/:id" element={<ProtectedRouteAccess><IncidentDetails /></ProtectedRouteAccess>} />
           <Route path ="/login" element={<Login />}/>
+          <Route path="/signup" element={<Signup />}/>
         </Routes>
       </BrowserRouter>
     </AuthProvider>
   );
 }
 
-export default App;
+
 
 
